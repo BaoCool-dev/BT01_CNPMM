@@ -1,15 +1,7 @@
-import db from '../models/index';
 import CRUDService from '../services/userService';
 
-let getHomePage = async (req, res) => {
-  try {
-    let data = await db.User.findAll();
-    return res.render('homepage.ejs', {
-      data: JSON.stringify(data)
-    });
-  } catch (e) {
-    console.log(e);
-  }
+let getHomePage = (req, res) => {
+  return res.render('homepage.ejs');
 }
 
 let getCreatePage = (req, res) => {
@@ -17,54 +9,119 @@ let getCreatePage = (req, res) => {
 }
 
 let postCRUD = async (req, res) => {
-  let message = await CRUDService.createNewUser(req.body);
-  console.log(message);
-  return res.send('Post crud to server');
+  try {
+    const { email, password, firstName, lastName, address, phoneNumber, gender, roleId } = req.body;
+
+    if (!email || !password || !firstName || !lastName) {
+      req.flash('error', 'Vui lòng điền đầy đủ các trường bắt buộc (Email, Mật khẩu, Họ, Tên)');
+      return res.redirect('/crud');
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      req.flash('error', 'Định dạng email không hợp lệ');
+      return res.redirect('/crud');
+    }
+
+    if (password.length < 6) {
+      req.flash('error', 'Mật khẩu phải có ít nhất 6 ký tự');
+      return res.redirect('/crud');
+    }
+
+    const result = await CRUDService.createNewUser(req.body);
+    if (result.errCode !== 0) {
+      req.flash('error', result.message);
+      return res.redirect('/crud');
+    }
+
+    req.flash('success', 'Tạo người dùng thành công!');
+    return res.redirect('/get-crud');
+  } catch (e) {
+    console.error(e);
+    req.flash('error', 'Đã xảy ra lỗi, vui lòng thử lại');
+    return res.redirect('/crud');
+  }
 }
 
 let getFindAllCrud = async (req, res) => {
-  let data = await CRUDService.getAllUser();
-  return res.render('users/findAllUser.ejs', {
-    datalist: data
-  });
+  try {
+    const data = await CRUDService.getAllUser();
+    return res.render('users/findAllUser.ejs', { datalist: data });
+  } catch (e) {
+    console.error(e);
+    return res.render('users/findAllUser.ejs', { datalist: [] });
+  }
 }
 
 let getEditCRUD = async (req, res) => {
-  let userId = req.query.id;
-  if (userId) {
-    let userData = await CRUDService.getUserInfoById(userId);
-    return res.render('users/editUser.ejs', {
-      data: userData
-    });
-  } else {
-    return res.send('không lấy được id');
+  try {
+    const userId = req.query.id;
+    if (!userId) {
+      req.flash('error', 'Không tìm thấy người dùng');
+      return res.redirect('/get-crud');
+    }
+    const userData = await CRUDService.getUserInfoById(userId);
+    if (!userData) {
+      req.flash('error', 'Người dùng không tồn tại');
+      return res.redirect('/get-crud');
+    }
+    return res.render('users/editUser.ejs', { data: userData });
+  } catch (e) {
+    console.error(e);
+    req.flash('error', 'Đã xảy ra lỗi');
+    return res.redirect('/get-crud');
   }
 }
 
 let putCRUD = async (req, res) => {
-  let data = req.body;
-  let data1 = await CRUDService.updateUser(data);
-  return res.render('users/findAllUser.ejs', {
-    datalist: data1
-  });
+  try {
+    const { firstName, lastName } = req.body;
+    if (!firstName || !lastName) {
+      req.flash('error', 'Họ và Tên không được để trống');
+      return res.redirect(`/edit-crud?id=${req.body.id}`);
+    }
+
+    const result = await CRUDService.updateUser(req.body);
+    if (result.errCode !== 0) {
+      req.flash('error', result.message);
+      return res.redirect(`/edit-crud?id=${req.body.id}`);
+    }
+
+    req.flash('success', 'Cập nhật người dùng thành công!');
+    return res.redirect('/get-crud');
+  } catch (e) {
+    console.error(e);
+    req.flash('error', 'Đã xảy ra lỗi khi cập nhật');
+    return res.redirect('/get-crud');
+  }
 }
 
 let deleteCRUD = async (req, res) => {
-  let id = req.query.id;
-  if (id) {
-    await CRUDService.deleteUserById(id);
-    return res.send('Deleted!!!!!!!!!!!!');
-  } else {
-    return res.send('Not find user');
+  try {
+    const id = req.body.id;
+    if (!id) {
+      req.flash('error', 'Không tìm thấy người dùng');
+      return res.redirect('/get-crud');
+    }
+    const result = await CRUDService.deleteUserById(id);
+    if (result.errCode !== 0) {
+      req.flash('error', result.message);
+    } else {
+      req.flash('success', 'Xóa người dùng thành công!');
+    }
+    return res.redirect('/get-crud');
+  } catch (e) {
+    console.error(e);
+    req.flash('error', 'Đã xảy ra lỗi khi xóa');
+    return res.redirect('/get-crud');
   }
 }
 
 module.exports = {
-  getHomePage: getHomePage,
-  getCreatePage: getCreatePage,
-  postCRUD: postCRUD,
-  getFindAllCrud: getFindAllCrud,
-  getEditCRUD: getEditCRUD,
-  putCRUD: putCRUD,
-  deleteCRUD: deleteCRUD
+  getHomePage,
+  getCreatePage,
+  postCRUD,
+  getFindAllCrud,
+  getEditCRUD,
+  putCRUD,
+  deleteCRUD
 }

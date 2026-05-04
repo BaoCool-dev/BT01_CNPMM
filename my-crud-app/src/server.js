@@ -1,22 +1,8 @@
-import express from 'express';
-import bodyParser from 'body-parser';
-import viewEngine from './config/viewEngine';
-import initWebRoutes from './routes/web';
-import connectDB from './config/configdb';
-
+import app from './app';
 require('dotenv').config();
 
-let app = express();
+const PORT = process.env.PORT || 8088;
 
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-
-viewEngine(app);
-initWebRoutes(app);
-connectDB();
-
-let port = process.env.APP_PORT || 6969;
-
-app.listen(port, () => {
-  console.log('Backend Nodejs is runing on the port : ' + port);
+app.listen(PORT, () => {
+  console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
